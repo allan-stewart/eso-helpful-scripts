@@ -1,0 +1,29 @@
+{
+  "name": "eso-helpful-scripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "^8.0.1"
+  },
+  "scripts": {
+    "test": "mocha",
+    "watch": "mocha -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allan-stewart/eso-helpful-scripts.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/allan-stewart/eso-helpful-scripts/issues"
+  },
+  "homepage": "https://github.com/allan-stewart/eso-helpful-scripts#readme",
+  "private": true
+}
