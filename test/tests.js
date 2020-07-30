@@ -8,7 +8,7 @@ var countWordsFoundInText = function(text, wordsToFind) {
     var processed = text.trim().replace(/\s{2,}/g, ' ').toLowerCase();
     return wordsToFind.reduce(function (total, word) {
         return total + (processed.indexOf(word.toLowerCase()) >= 0 ? 1 : 0);
-    }, 0)
+    }, 0);
 }
 
 describe('countWords', () => {
