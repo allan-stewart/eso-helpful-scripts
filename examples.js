@@ -90,23 +90,19 @@ player.SetVar("numWords", numWords);
 // INSTEAD
 //---------------
 
-var analyzeText = function(text, options) {
-    var processed = text.trim().replace(/\s{2,}/g, ' ').toLowerCase();
-    
-    var foundWords = 0;
-    if (options && options.wordsToFind) {
-        foundWords = options.wordsToFind.reduce(function (total, word) {
-            return total + (processed.indexOf(word.toLowerCase()) >= 0 ? 1 : 0);
-        }, 0)
-    }
+var countWords = function(text) {
+    return text.trim().replace(/\s{2,}/g, ' ').split(' ').length;
+}
 
-    return {
-        wordCount: processed.split(' ').length,
-        foundWords: foundWords
-    }
+var countWordsFoundInText = function(text, wordsToFind) {
+    var processed = text.trim().replace(/\s{2,}/g, ' ').toLowerCase();
+    return wordsToFind.reduce(function (total, word) {
+        return total + (processed.indexOf(word.toLowerCase()) >= 0 ? 1 : 0);
+    }, 0)
 }
 
 var player = GetPlayer();
-var result = analyzeText(player.GetVar("TextEntry"), { wordsToFind: ["increase", 'more', 'Mabel', 'Albert', 'heart', 'rate', 'pulse', 'will', 'high', 'low', 'exercise', 'run', 'during', 'before', 'after']})
-player.SetVar("numWords", result.wordCount);
-player.SetVar("Points", result.foundWords);
+var text = player.GetVar("TextEntry");
+var wordsToFind = ["increase", 'more', 'Mabel', 'Albert', 'heart', 'rate', 'pulse', 'will', 'high', 'low', 'exercise', 'run', 'during', 'before', 'after']
+player.SetVar("numWords", countWords(text));
+player.SetVar("Points", countWordsFoundInText(text, wordsToFind));
