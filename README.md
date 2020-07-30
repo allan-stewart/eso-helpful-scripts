@@ -45,14 +45,13 @@ Each word is only counted once, so if they wrote: "A noun is a thing like ideas 
 
 Example usage:
 ```javascript
+var player = GetPlayer();
 var countWordsFoundInText = function(text, wordsToFind) {
     var processed = text.trim().replace(/\s{2,}/g, ' ').toLowerCase();
     return wordsToFind.reduce(function (total, word) {
         return total + (processed.indexOf(word.toLowerCase()) >= 0 ? 1 : 0);
     }, 0)
 }
-
-var player = GetPlayer();
 var wordsToFind = ["increase", 'more', 'Mabel', 'Albert', 'heart', 'rate', 'pulse', 'will', 'high', 'low', 'exercise', 'run', 'during', 'before', 'after']
 var text = player.GetVar("TextEntry");
 player.SetVar("Points", countWordsFoundInText(text, wordsToFind));
