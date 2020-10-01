@@ -46,16 +46,36 @@
         <textarea id="the-text" cols="100" rows="7" onkeyup="analyze()">THIS IS AN EXAMPLE. IF YOU ADD ENOUGH words into the frequency analysis, you will hopefully get somewhere close to the standard values for written English. The trick for me will be to figure out how these differ from the expected values.</textarea>
         <div id="frequency-distribution"></div>
         <div>Standard deviation: <span id="standard-deviation"></span></div>
-        <div>Chi Squared Goodness of Fit: if <span id="chi-squared"></span> >= 37.655 then NOT English w/ 5% margin of error</div>
+        <div>Chi Squared Goodness of Fit: <span id="chi-squared"></span></div>
+        <div>Degrees of Freedom: <span id="degrees-of-freedom"></span></div>
+        <div>P-Value: <span id="p-value"></span></div>
+        <div>Effect size (phi): <span id="effect-size"></span></div>
+        <div>Cramer's V: <span id="cramers-v"></span></div>
+        <div><strong>Result: <span id="result"></span></strong></div>
     </body>
     <script>
         function analyze() {
             const text = document.getElementById('the-text').value
             const letterCounts = getLetterCounts(text)
-            console.log('letterCounts', letterCounts)
             drawFrequencies(letterCounts)
+
             document.getElementById('standard-deviation').innerHTML = calculateStandardDeviation(letterCounts)
-            document.getElementById('chi-squared').innerHTML = chiSquaredGoodnessOfFit(letterCounts)
+            var chiSquared = chiSquaredGoodnessOfFit(letterCounts)
+            var totalLetters = sum(letterCounts.map(x => x.actual))
+            var degreesOfFreedom = totalLetters - 1
+            var pValue = calculatePValue(.05, degreesOfFreedom)
+            var result = chiSquared >= pValue ? 'NOT ENGLISH' : 'English'
+
+            document.getElementById('chi-squared').innerHTML = chiSquared
+            document.getElementById('degrees-of-freedom').innerHTML = degreesOfFreedom
+            document.getElementById('p-value').innerHTML = pValue
+            document.getElementById('result').innerHTML = result
+
+            var effectSize = calculateEffectSize(chiSquared, totalLetters)
+            document.getElementById('effect-size').innerHTML = `${effectSize.phi} (${effectSize.effect})`
+            var cramersV = calculateCramersV(chiSquared, totalLetters, 26)
+            document.getElementById('cramers-v').innerHTML = `${cramersV.v} (${cramersV.association} association)`
+            
             
             /*
             Need to also check other things like:
@@ -68,7 +88,7 @@
         }
 
         function calculateStandardDeviation(letterCounts) {
-            var differences = letterCounts.map(x => englishFrequencies[x.letter] - x.frequency)
+            var differences = letterCounts.map(x => x.expected - x.actual)
             var averageDifference = sum(differences) / differences.length
             var sumOfSquaredDifferencesMinusAverageDifference = sum(differences.map(x => Math.pow((x - averageDifference), 2)))
             var standardDeviation = sumOfSquaredDifferencesMinusAverageDifference / (differences.length - 1)
@@ -76,33 +96,56 @@
         }
 
         function chiSquaredGoodnessOfFit(letterCounts) {
-            //chi-squared goodness of fit formula
-            //Χ^2 = Σ [ (Oi - Ei)^2 / Ei ]
-            //DF = k - 1 // degrees of freedom always = 25
-            // Compare X^2 to table at .05 (5% risk of getting it wrong), if it is greater or equal to the table then not English.
-            // .05 value for 25 DF = (36.42 + 38.89) / 2 = 37.655
-            // .01 value for 25 DF = (42.98 + 45.64) / 2
+            // Formula: Χ^2 = Σ [ (Oi - Ei)^2 / Ei ]
+            return sum(letterCounts.map(x => Math.pow((x.actual - x.expected), 2) / x.expected))
+        }
 
-            // Also check out Effect Size Phi for Chi-square test
-            // phi = sqrt(X^2 / n)
-            // where n = the number of observations. A value of .1 is considered a small effect, .3 a medium effect and .5 a large effect.
+        function calculatePValue(significance, degreesOfFreedom) {
+            // Using Hoaglin's approximation
+            var a = -1.37266
+            var b = 1.06807
+            var c = 2.13161
+            var d = -0.04589
+            var sqrtDegreesOfFreedom = Math.sqrt(degreesOfFreedom)
+            var sqrtOfQuantile = a + b * sqrtDegreesOfFreedom + (c + d * sqrtDegreesOfFreedom) * Math.sqrt(-1 * Math.log10(significance))
+            return sqrtOfQuantile * sqrtOfQuantile
+        }
 
-            // Zac says not to reduce to percentages (0-1) too quickly because we lose info.
-            // Instead do Oi = number of that letter, and Ei = expected number of that letter based on the normal frequency
-            // But he isn't sure whether DF would change in that case... it might still work for 26-1,
-            // or it might need to be the total number of characters - 1 (the latter means the X^2 chart will need to be dynamic...)
+        // Effect Size Phi for Chi-square test
+        // phi = sqrt(X^2 / n)
+        // where n = the number of observations.
+        // A value of .1 is considered a small effect, .3 a medium effect and .5 a large effect.
+        function calculateEffectSize(chiSquared, n)
+        {
+            var phi = Math.sqrt(chiSquared / n)
+            var effect = 'small'
+            if (phi >= .3) {
+                effect = 'medium'
+            }
+            if (phi >= .5) {
+                effect = 'large'
+            }
+            return {phi, effect}
+        }
 
-            var chiSquared = sum(letterCounts.map(x => {
-                const observed = x.frequency
-                const expected = englishFrequencies[x.letter]
-                return Math.pow((observed - expected), 2) / expected
-            }))
-
-            var updated = sum(letterCounts.map(x => Math.pow((x.actual - x.expected), 2) / x.expected))
-
-            console.log('chiSquared original:', chiSquared, `vs. updated:`, updated)
-
-            return chiSquared
+        // Cramer's V helps us calculate an effect size. Returns 0-1
+        // >.5 = high association, .3 to .5 moderate, .1 to .3 low, 0 to .1 little/none
+        // N = the total number of letters written
+        // k = the number of possible letters (26)
+        function calculateCramersV(chiSquared, N, k)
+        {
+            var v = Math.sqrt(chiSquared / (N * (k - 1)))
+            var association = 'none'
+            if (v >= .1) {
+                association = 'low'
+            }
+            if (v >= .3) {
+                association = 'moderate'
+            }
+            if (v >= .5) {
+                association = 'high'
+            }
+            return {v, association}
         }
 
         function sum(array) {
@@ -122,7 +165,6 @@
             }
             var letters = Object.keys(counts)
             var totalCharacters = sum(letters.map(x => counts[x]))
-            console.log('total characters', totalCharacters)
             return letters.map(x => ({letter: x, actual: counts[x], expected: totalCharacters * englishFrequencies[x], frequency: total > 0 ? (counts[x]/total) : 0}));
         }
 
