@@ -46,15 +46,16 @@
         <textarea id="the-text" cols="100" rows="7" onkeyup="analyze()">THIS IS AN EXAMPLE. IF YOU ADD ENOUGH words into the frequency analysis, you will hopefully get somewhere close to the standard values for written English. The trick for me will be to figure out how these differ from the expected values.</textarea>
         <div id="frequency-distribution"></div>
         <div>Standard deviation: <span id="standard-deviation"></span></div>
-        <div>Chi Squared Goodness of Fit: <span id="chi-squared"></span></div>
+        <div>Chi Squared Goodness of Fit: if <span id="chi-squared"></span> >= 37.655 then NOT English w/ 5% margin of error</div>
     </body>
     <script>
         function analyze() {
             const text = document.getElementById('the-text').value
-            const frequencies = getLetterFrequency(text)
-            drawFrequencies(frequencies)
-            document.getElementById('standard-deviation').innerHTML = calculateStandardDeviation(frequencies)
-            document.getElementById('chi-squared').innerHTML = chiSquaredGoodnessOfFit(frequencies)
+            const letterCounts = getLetterCounts(text)
+            console.log('letterCounts', letterCounts)
+            drawFrequencies(letterCounts)
+            document.getElementById('standard-deviation').innerHTML = calculateStandardDeviation(letterCounts)
+            document.getElementById('chi-squared').innerHTML = chiSquaredGoodnessOfFit(letterCounts)
             
             /*
             Need to also check other things like:
@@ -66,15 +67,15 @@
             */
         }
 
-        function calculateStandardDeviation(frequencies) {
-            var differences = frequencies.map(x => englishFrequencies[x.letter] - x.frequency)
+        function calculateStandardDeviation(letterCounts) {
+            var differences = letterCounts.map(x => englishFrequencies[x.letter] - x.frequency)
             var averageDifference = sum(differences) / differences.length
             var sumOfSquaredDifferencesMinusAverageDifference = sum(differences.map(x => Math.pow((x - averageDifference), 2)))
-            var standardDeviation = sumOfSquaredDifferencesMinusAverageDifference / (frequencies.length - 1)
+            var standardDeviation = sumOfSquaredDifferencesMinusAverageDifference / (differences.length - 1)
             return standardDeviation
         }
 
-        function chiSquaredGoodnessOfFit(frequencies) {
+        function chiSquaredGoodnessOfFit(letterCounts) {
             //chi-squared goodness of fit formula
             //Χ^2 = Σ [ (Oi - Ei)^2 / Ei ]
             //DF = k - 1 // degrees of freedom always = 25
@@ -91,11 +92,16 @@
             // But he isn't sure whether DF would change in that case... it might still work for 26-1,
             // or it might need to be the total number of characters - 1 (the latter means the X^2 chart will need to be dynamic...)
 
-            var chiSquared = sum(frequencies.map(x => {
+            var chiSquared = sum(letterCounts.map(x => {
                 const observed = x.frequency
                 const expected = englishFrequencies[x.letter]
                 return Math.pow((observed - expected), 2) / expected
             }))
+
+            var updated = sum(letterCounts.map(x => Math.pow((x.actual - x.expected), 2) / x.expected))
+
+            console.log('chiSquared original:', chiSquared, `vs. updated:`, updated)
+
             return chiSquared
         }
 
@@ -103,7 +109,7 @@
             return array.reduce((sum, x) => sum + x, 0)
         }
 
-        function getLetterFrequency(text) {
+        function getLetterCounts(text) {
             var counts = 'abcdefghijklmnopqrstuvwxyz'.split('').reduce((acc, x) => {acc[x] = 0; return acc}, {})
             var lower = text.toLowerCase();
             var total = 0;
@@ -114,13 +120,15 @@
                     total++
                 }
             }
-            return Object.keys(counts).map(x => ({letter: x, frequency: total > 0 ? (counts[x]/total) : 0}));
+            var letters = Object.keys(counts)
+            var totalCharacters = sum(letters.map(x => counts[x]))
+            console.log('total characters', totalCharacters)
+            return letters.map(x => ({letter: x, actual: counts[x], expected: totalCharacters * englishFrequencies[x], frequency: total > 0 ? (counts[x]/total) : 0}));
         }
 
-        function drawFrequencies(frequencies) {
-            var html = frequencies.map(drawFrequencyBar)
+        function drawFrequencies(letterCounts) {
+            var html = letterCounts.map(drawFrequencyBar)
             document.getElementById('frequency-distribution').innerHTML = html.join('\n')
-            //console.log(frequencies)
         }
 
         function drawFrequencyBar(x) {
