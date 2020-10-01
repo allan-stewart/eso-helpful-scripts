@@ -2,6 +2,10 @@
     <head>
         <title>Letter Frequency</title>
         <style>
+            body {
+                font-family: Helvetica, Arial, sans-serif;
+            }
+
             .bar-container {
                 display: block;
                 position: relative;
@@ -33,7 +37,7 @@
             }
 
             #frequency-distribution {
-                margin-top: 10px;
+                margin: 10px 0;
             }
         </style>
     </head>
@@ -41,11 +45,62 @@
         <h1>Letter Frequency</h1>
         <textarea id="the-text" cols="100" rows="7" onkeyup="analyze()">THIS IS AN EXAMPLE. IF YOU ADD ENOUGH words into the frequency analysis, you will hopefully get somewhere close to the standard values for written English. The trick for me will be to figure out how these differ from the expected values.</textarea>
         <div id="frequency-distribution"></div>
+        <div>Standard deviation: <span id="standard-deviation"></span></div>
+        <div>Chi Squared Goodness of Fit: <span id="chi-squared"></span></div>
     </body>
     <script>
         function analyze() {
-            let text = document.getElementById('the-text').value
-            drawFrequencies(getLetterFrequency(text))
+            const text = document.getElementById('the-text').value
+            const frequencies = getLetterFrequency(text)
+            drawFrequencies(frequencies)
+            document.getElementById('standard-deviation').innerHTML = calculateStandardDeviation(frequencies)
+            document.getElementById('chi-squared').innerHTML = chiSquaredGoodnessOfFit(frequencies)
+            
+            /*
+            Need to also check other things like:
+            - are there any vowels? (maybe)
+            - number of unique words
+            - length of the words?
+            - total number of words?
+            - outliers - whether there are too many of a single character (beyond a couple standard deviations?)
+            */
+        }
+
+        function calculateStandardDeviation(frequencies) {
+            var differences = frequencies.map(x => englishFrequencies[x.letter] - x.frequency)
+            var averageDifference = sum(differences) / differences.length
+            var sumOfSquaredDifferencesMinusAverageDifference = sum(differences.map(x => Math.pow((x - averageDifference), 2)))
+            var standardDeviation = sumOfSquaredDifferencesMinusAverageDifference / (frequencies.length - 1)
+            return standardDeviation
+        }
+
+        function chiSquaredGoodnessOfFit(frequencies) {
+            //chi-squared goodness of fit formula
+            //Χ^2 = Σ [ (Oi - Ei)^2 / Ei ]
+            //DF = k - 1 // degrees of freedom always = 25
+            // Compare X^2 to table at .05 (5% risk of getting it wrong), if it is greater or equal to the table then not English.
+            // .05 value for 25 DF = (36.42 + 38.89) / 2 = 37.655
+            // .01 value for 25 DF = (42.98 + 45.64) / 2
+
+            // Also check out Effect Size Phi for Chi-square test
+            // phi = sqrt(X^2 / n)
+            // where n = the number of observations. A value of .1 is considered a small effect, .3 a medium effect and .5 a large effect.
+
+            // Zac says not to reduce to percentages (0-1) too quickly because we lose info.
+            // Instead do Oi = number of that letter, and Ei = expected number of that letter based on the normal frequency
+            // But he isn't sure whether DF would change in that case... it might still work for 26-1,
+            // or it might need to be the total number of characters - 1 (the latter means the X^2 chart will need to be dynamic...)
+
+            var chiSquared = sum(frequencies.map(x => {
+                const observed = x.frequency
+                const expected = englishFrequencies[x.letter]
+                return Math.pow((observed - expected), 2) / expected
+            }))
+            return chiSquared
+        }
+
+        function sum(array) {
+            return array.reduce((sum, x) => sum + x, 0)
         }
 
         function getLetterFrequency(text) {
